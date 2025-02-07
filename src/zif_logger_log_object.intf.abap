@@ -1,4 +1,4 @@
-INTERFACE zif_loggable_object
+INTERFACE zif_logger_log_object
   PUBLIC.
   TYPES:
     BEGIN OF ty_symsg,
@@ -18,5 +18,5 @@ INTERFACE zif_loggable_object
     END OF ty_message,
     tty_messages TYPE STANDARD TABLE OF ty_message WITH DEFAULT KEY.
 
-  METHODS get_message_table RETURNING VALUE(r_result) TYPE tty_messages.
+  METHODS get_message_table RETURNING VALUE(result) TYPE tty_messages.
 ENDINTERFACE.

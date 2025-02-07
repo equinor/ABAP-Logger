@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<abapGit version="v1.0.0" serializer="LCL_OBJECT_INTF" serializer_version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <VSEOINTERF>
+    <CLSNAME>ZIF_LOGGER_DEPRECATED</CLSNAME>
+    <LANGU>E</LANGU>
+    <DESCRIPT>ABAP Logger: Interface - Deprecated methods will be removed</DESCRIPT>
+    <EXPOSURE>2</EXPOSURE>
+    <STATE>1</STATE>
+    <UNICODE>X</UNICODE>
+   </VSEOINTERF>
+   <DESCRIPTIONS>
+    <SEOCOMPOTX>
+     <CMPNAME>A</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>DEPRECATED - renamed to abend( )</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>E</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>DEPRECATED - renamed to error( )</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>I</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>DEPRECATED - renamed to info( )</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>S</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>DEPRECATED - renamed to success( )</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>W</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>DEPRECATED - renamed to warning( )</DESCRIPT>
+    </SEOCOMPOTX>
+   </DESCRIPTIONS>
+  </asx:values>
+ </asx:abap>
+</abapGit>

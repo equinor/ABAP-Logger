@@ -1,195 +1,174 @@
 CLASS zcl_logger_factory DEFINITION
-  PUBLIC
-  FINAL
+  PUBLIC FINAL
   CREATE PRIVATE
   GLOBAL FRIENDS zcl_logger_injector.
 
   PUBLIC SECTION.
-
     "! Starts a new log.
+    "!
+    "! @parameter object    | Application log object
+    "! @parameter subobject | Application log sub-object
+    "! @parameter extnumber | External ID for application log
+    "! @parameter desc      | External ID for application log (kept temporarily for backwards compatibility)
+    "! @parameter context   | Application log context
+    "! @parameter settings  | Logger settings
+    "! @parameter result    | Logger
     CLASS-METHODS create_log
-      IMPORTING
-        object       TYPE csequence OPTIONAL
-        subobject    TYPE csequence OPTIONAL
-        desc         TYPE csequence OPTIONAL
-        context      TYPE any OPTIONAL
-        settings     TYPE REF TO zif_logger_settings OPTIONAL
-      RETURNING
-        VALUE(r_log) TYPE REF TO zif_logger.
+      IMPORTING !object       TYPE csequence                  OPTIONAL
+                subobject     TYPE csequence                  OPTIONAL
+                extnumber     TYPE csequence                  OPTIONAL
+                desc          TYPE csequence                  OPTIONAL
+                !context      TYPE any                        OPTIONAL
+                settings      TYPE REF TO zif_logger_settings OPTIONAL
+      RETURNING VALUE(result) TYPE REF TO zif_logger.
 
     "! Reopens an already existing log.
+    "!
+    "! @parameter object                   | Application log object
+    "! @parameter subobject                | Application log sub-object
+    "! @parameter extnumber                | External ID for application log
+    "! @parameter create_if_does_not_exist | Create a new application log if no logs are found
+    "! @parameter settings                 | Logger settings
+    "! @parameter result                   | Logger
     CLASS-METHODS open_log
-      IMPORTING
-        object                   TYPE csequence
-        subobject                TYPE csequence
-        desc                     TYPE csequence OPTIONAL
-        create_if_does_not_exist TYPE abap_bool DEFAULT abap_false
-        settings                 TYPE REF TO zif_logger_settings OPTIONAL
-      RETURNING
-        VALUE(r_log)             TYPE REF TO zif_logger.
+      IMPORTING !object                  TYPE csequence
+                subobject                TYPE csequence
+                extnumber                TYPE csequence                  OPTIONAL
+                create_if_does_not_exist TYPE abap_bool                  DEFAULT abap_false
+                settings                 TYPE REF TO zif_logger_settings OPTIONAL
+      RETURNING VALUE(result)            TYPE REF TO zif_logger.
 
     "! Creates a settings object which can be modified. It can be pass on
     "! the creation of the logger to change its behavior.
+    "!
+    "! @parameter result | Logger settings
     CLASS-METHODS create_settings
-      RETURNING
-        VALUE(r_settings) TYPE REF TO zif_logger_settings.
+      RETURNING VALUE(result) TYPE REF TO zif_logger_settings.
 
     CLASS-METHODS create_collection
-      RETURNING
-        VALUE(r_collection) TYPE REF TO zif_logger_collection.
+      RETURNING VALUE(result) TYPE REF TO zif_logger_collection.
 
+    "! Create display profile
+    "!
+    "! @parameter predefined_profile_type    | Constants are defined in ZIF_LOGGER_DISPLAY_PROFILE
+    "! @parameter result                     | Display profile
+    "! @raising   zcx_logger_display_profile | Display profile exception
     CLASS-METHODS create_display_profile
-      IMPORTING
-        i_detlevel               TYPE clike OPTIONAL
-        i_no_tree                TYPE clike OPTIONAL
-        i_popup                  TYPE clike OPTIONAL
-        i_single_log             TYPE clike OPTIONAL
-        i_standard               TYPE clike DEFAULT abap_true
-      RETURNING
-        VALUE(r_display_profile) TYPE REF TO zif_logger_display_profile.
-
+      IMPORTING predefined_profile_type TYPE i OPTIONAL
+      RETURNING VALUE(result)           TYPE REF TO zif_logger_display_profile
+      RAISING   zcx_logger_display_profile.
 
     "! Reopens specific log instance.
+    "!
+    "! @parameter db_number | Log number
+    "! @parameter settings  | Logger settings
+    "! @parameter result    | Logger
     CLASS-METHODS open_log_by_db_number
-      IMPORTING
-        db_number    TYPE balognr
-        settings     TYPE REF TO zif_logger_settings OPTIONAL
-      RETURNING
-        VALUE(r_log) TYPE REF TO zif_logger.
+      IMPORTING db_number     TYPE balognr
+                settings      TYPE REF TO zif_logger_settings OPTIONAL
+      RETURNING VALUE(result) TYPE REF TO zif_logger.
 
-
-  PROTECTED SECTION.
   PRIVATE SECTION.
+    "! <p class="shorttext synchronized">Name of background job which executes XPRA reports</p>
+    CONSTANTS xpra_job_name TYPE btcjob VALUE 'RDDEXECL'.
 
-    CLASS-DATA:
-      log_logger          TYPE REF TO zif_logger,
-      log_settings        TYPE REF TO zif_logger_settings,
-      log_collection      TYPE REF TO zif_logger_collection,
-      log_display_profile TYPE REF TO zif_logger_display_profile.
+    CLASS-DATA log_logger          TYPE REF TO zif_logger.
+    CLASS-DATA log_settings        TYPE REF TO zif_logger_settings.
+    CLASS-DATA log_collection      TYPE REF TO zif_logger_collection.
+    CLASS-DATA log_display_profile TYPE REF TO zif_logger_display_profile.
 
     CLASS-METHODS find_log_headers
-      IMPORTING
-        object                 TYPE csequence OPTIONAL
-        subobject              TYPE csequence OPTIONAL
-        desc                   TYPE csequence OPTIONAL
-        db_number              TYPE balognr OPTIONAL
-      RETURNING
-        VALUE(r_found_headers) TYPE balhdr_t.
+      IMPORTING !object       TYPE csequence OPTIONAL
+                subobject     TYPE csequence OPTIONAL
+                extnumber     TYPE csequence OPTIONAL
+                db_number     TYPE balognr   OPTIONAL
+      RETURNING VALUE(result) TYPE balhdr_t.
+
+    CLASS-METHODS get_settings
+      IMPORTING settings      TYPE REF TO zif_logger_settings
+      RETURNING VALUE(result) TYPE REF TO zif_logger_settings.
+
+    CLASS-METHODS is_executing_as_xpra
+      RETURNING VALUE(result) TYPE abap_bool.
 
     CLASS-METHODS open_log_by_header
-      IMPORTING
-        header       TYPE balhdr
-        settings     TYPE REF TO zif_logger_settings OPTIONAL
-      RETURNING
-        VALUE(r_log) TYPE REF TO zif_logger.
+      IMPORTING !header       TYPE balhdr
+                settings      TYPE REF TO zif_logger_settings OPTIONAL
+      RETURNING VALUE(result) TYPE REF TO zif_logger.
+
+    CLASS-METHODS create_xpra_logger
+      IMPORTING logger_settings TYPE REF TO zif_logger_settings
+      RETURNING VALUE(result)   TYPE REF TO zcl_logger_xpra.
+
+    CLASS-METHODS create_sbal_logger
+      IMPORTING logger_settings TYPE REF TO zif_logger_settings
+                !object         TYPE csequence OPTIONAL
+                subobject       TYPE csequence OPTIONAL
+                extnumber       TYPE csequence OPTIONAL
+                !context        TYPE any       OPTIONAL
+      RETURNING VALUE(result)   TYPE REF TO zcl_logger_sbal.
 ENDCLASS.
 
 
-
 CLASS zcl_logger_factory IMPLEMENTATION.
-
-
   METHOD create_collection.
     IF log_collection IS INITIAL.
-      CREATE OBJECT r_collection TYPE zcl_logger_collection.
+      CREATE OBJECT result TYPE zcl_logger_collection.
     ELSE.
-      r_collection = log_collection.
+      result = log_collection.
     ENDIF.
   ENDMETHOD.
-
 
   METHOD create_display_profile.
     IF log_display_profile IS INITIAL.
-      CREATE OBJECT r_display_profile TYPE zcl_logger_display_profile.
+      CREATE OBJECT result TYPE zcl_logger_display_profile.
     ELSE.
-      r_display_profile = log_display_profile.
+      result = log_display_profile.
     ENDIF.
 
-    r_display_profile->set(
-      i_detlevel    = i_detlevel
-      i_no_tree     = i_no_tree
-      i_popup       = i_popup
-      i_single_log  = i_single_log
-      i_standard    = i_standard ).
+    IF predefined_profile_type IS SUPPLIED.
+      result->set_predefined_profile( predefined_profile_type ).
+    ENDIF.
   ENDMETHOD.
-
 
   METHOD create_log.
-    FIELD-SYMBOLS <context_val> TYPE c.
+    ASSERT desc IS NOT SUPPLIED OR extnumber IS NOT SUPPLIED.
 
-    DATA lo_log TYPE REF TO zcl_logger.
-
-    IF log_logger IS INITIAL.
-      CREATE OBJECT lo_log TYPE zcl_logger.
+    IF log_logger IS NOT INITIAL.
+      result = log_logger.
+    ELSEIF is_executing_as_xpra( ) = abap_true.
+      result = create_xpra_logger( get_settings( settings ) ).
     ELSE.
-      lo_log ?= log_logger.
+      result = create_sbal_logger( object          = object
+                                   subobject       = subobject
+                                   extnumber       = extnumber
+                                   context         = context
+                                   logger_settings = get_settings( settings ) ).
     ENDIF.
-
-    lo_log->header-object    = object.
-    lo_log->header-subobject = subobject.
-    lo_log->header-extnumber = desc.
-
-    IF settings IS BOUND.
-      lo_log->settings = settings.
-    ELSE.
-      lo_log->settings = create_settings( ).
-    ENDIF.
-
-    " Special case: Logger can work without object - but then the data cannot be written to the database.
-    IF object IS INITIAL.
-      lo_log->settings->set_autosave( abap_false ).
-    ENDIF.
-
-    " Set deletion date and set if log can be deleted before deletion date is reached.
-    lo_log->header-aldate_del = lo_log->settings->get_expiry_date( ).
-    lo_log->header-del_before = lo_log->settings->get_must_be_kept_until_expiry( ).
-
-    IF context IS SUPPLIED AND context IS NOT INITIAL.
-      lo_log->header-context-tabname =
-        cl_abap_typedescr=>describe_by_data( context )->get_ddic_header( )-tabname.
-      ASSIGN context TO <context_val> CASTING.
-      lo_log->header-context-value = <context_val>.
-    ENDIF.
-
-    CALL FUNCTION 'BAL_LOG_CREATE'
-      EXPORTING
-        i_s_log      = lo_log->header
-      IMPORTING
-        e_log_handle = lo_log->handle.
-
-    " BAL_LOG_CREATE will fill in some additional header data.
-    " This FM updates our instance attribute to reflect that.
-    CALL FUNCTION 'BAL_LOG_HDR_READ'
-      EXPORTING
-        i_log_handle = lo_log->handle
-      IMPORTING
-        e_s_log      = lo_log->header.
-
-    r_log = lo_log.
   ENDMETHOD.
-
 
   METHOD create_settings.
     IF log_settings IS INITIAL.
-      CREATE OBJECT r_settings TYPE zcl_logger_settings.
+      CREATE OBJECT result TYPE zcl_logger_settings.
     ELSE.
-      r_settings = log_settings.
+      result = log_settings.
     ENDIF.
   ENDMETHOD.
 
-
   METHOD open_log.
-    DATA: found_headers      TYPE balhdr_t,
-          most_recent_header TYPE balhdr.
+    DATA found_headers      TYPE balhdr_t.
+    DATA most_recent_header TYPE balhdr.
 
-    found_headers = find_log_headers( object = object subobject = subobject desc = desc ).
+    found_headers = find_log_headers( object    = object
+                                      subobject = subobject
+                                      extnumber = extnumber ).
 
-    IF lines( found_headers ) = 0 .
+    IF lines( found_headers ) = 0.
       IF create_if_does_not_exist = abap_true.
-        r_log = create_log( object    = object
-                            subobject = subobject
-                            desc      = desc
-                            settings  = settings ).
+        result = create_log( object    = object
+                             subobject = subobject
+                             extnumber = extnumber
+                             settings  = settings ).
       ENDIF.
       RETURN.
     ENDIF.
@@ -200,12 +179,13 @@ CLASS zcl_logger_factory IMPLEMENTATION.
     ENDIF.
     READ TABLE found_headers INDEX 1 INTO most_recent_header.
 
-    r_log = open_log_by_header( header = most_recent_header settings = settings ).
+    result = open_log_by_header( header   = most_recent_header
+                                 settings = settings ).
   ENDMETHOD.
 
   METHOD open_log_by_db_number.
-    DATA: header      TYPE balhdr,
-          log_headers TYPE balhdr_t.
+    DATA header      TYPE balhdr.
+    DATA log_headers TYPE balhdr_t.
 
     log_headers = find_log_headers( db_number = db_number ).
     IF lines( log_headers ) <> 1.
@@ -214,82 +194,112 @@ CLASS zcl_logger_factory IMPLEMENTATION.
     ENDIF.
 
     READ TABLE log_headers INDEX 1 INTO header.
-    r_log = open_log_by_header( header = header settings = settings ).
+    result = open_log_by_header( header   = header
+                                 settings = settings ).
   ENDMETHOD.
 
-
   METHOD find_log_headers.
-    DATA: filter      TYPE bal_s_lfil,
-          l_object    TYPE balobj_d,
-          l_subobject TYPE balsubobj,
-          extnumber   TYPE balnrext,
-          log_numbers TYPE bal_t_logn.
+    DATA filter      TYPE bal_s_lfil.
+    DATA l_object    TYPE balobj_d.
+    DATA l_subobject TYPE balsubobj.
+    DATA ext_number  TYPE balnrext.
+    DATA log_numbers TYPE bal_t_logn.
 
     l_object    = object.
     l_subobject = subobject.
-    extnumber   = desc.
+    ext_number = extnumber.
     IF db_number IS SUPPLIED.
       INSERT db_number INTO TABLE log_numbers.
     ENDIF.
 
     CALL FUNCTION 'BAL_FILTER_CREATE'
-      EXPORTING
-        i_object       = l_object
-        i_subobject    = l_subobject
-        i_extnumber    = extnumber
-        i_t_lognumber  = log_numbers
-      IMPORTING
-        e_s_log_filter = filter.
+      EXPORTING i_object       = l_object
+                i_subobject    = l_subobject
+                i_extnumber    = ext_number
+                i_t_lognumber  = log_numbers
+      IMPORTING e_s_log_filter = filter.
 
     CALL FUNCTION 'BAL_DB_SEARCH'
-      EXPORTING
-        i_s_log_filter = filter
-      IMPORTING
-        e_t_log_header = r_found_headers
-      EXCEPTIONS
-        log_not_found  = 1.
+      EXPORTING  i_s_log_filter = filter
+      IMPORTING  e_t_log_header = result
+      EXCEPTIONS log_not_found  = 1.
+  ENDMETHOD.
+
+  METHOD get_settings.
+    IF settings IS BOUND AND settings IS NOT INITIAL.
+      result = settings.
+    ELSE.
+      result = create_settings( ).
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD is_executing_as_xpra.
+    " XPRA executes in client 000 in a specific job
+    DATA current_job_name TYPE btcjob.
+
+    result = abap_false.
+    IF sy-mandt <> '000'.
+      RETURN.
+    ENDIF.
+
+    CALL FUNCTION 'GET_JOB_RUNTIME_INFO'
+      IMPORTING  jobname         = current_job_name
+      EXCEPTIONS no_runtime_info = 1.
+    IF sy-subrc <> 0.
+      RETURN.
+    ELSEIF current_job_name = xpra_job_name.
+      result = abap_true.
+    ENDIF.
   ENDMETHOD.
 
   METHOD open_log_by_header.
-    DATA:   log_headers  TYPE balhdr_t.
+    DATA log_headers TYPE balhdr_t.
+
     INSERT header INTO TABLE log_headers.
 
-    "If you call BAL_DB_LOAD for a log that is already loaded, it doesn't return its handle, so don't rely on returned data
+    " If you call BAL_DB_LOAD for a log that is already loaded, it doesn't return its handle, so don't rely on returned data
     CALL FUNCTION 'BAL_DB_LOAD'
-      EXPORTING
-        i_t_log_header     = log_headers
-      EXCEPTIONS
-        no_logs_specified  = 1                " No logs specified
-        log_not_found      = 2                " Log not found
-        log_already_loaded = 3                " Log is already loaded
-        OTHERS             = 4.
+      EXPORTING  i_t_log_header     = log_headers
+      EXCEPTIONS no_logs_specified  = 1                " No logs specified
+                 log_not_found      = 2                " Log not found
+                 log_already_loaded = 3                " Log is already loaded
+                 OTHERS             = 4.
     IF sy-subrc <> 0.
       RAISE EXCEPTION TYPE zcx_logger.
     ENDIF.
 
-    DATA logger TYPE REF TO zcl_logger.
+    DATA logger TYPE REF TO zcl_logger_sbal.
     IF log_logger IS INITIAL.
-      CREATE OBJECT logger TYPE zcl_logger.
+      logger = create_sbal_logger( logger_settings = get_settings( settings ) ).
+      logger->handle    = header-log_handle.
+      logger->db_number = header-lognumber.
+      result = logger.
     ELSE.
-      logger ?= log_logger.
-    ENDIF.
-
-    logger->handle = header-log_handle.
-    logger->db_number = header-lognumber.
-
-    IF settings IS BOUND.
-      logger->settings = settings.
-    ELSE.
-      logger->settings = create_settings( ).
+      result = log_logger.
     ENDIF.
 
     CALL FUNCTION 'BAL_LOG_HDR_READ'
-      EXPORTING
-        i_log_handle = logger->handle
-      IMPORTING
-        e_s_log      = logger->header.
-
-    r_log = logger.
+      EXPORTING i_log_handle = logger->handle
+      IMPORTING e_s_log      = logger->header.
   ENDMETHOD.
 
+  METHOD create_xpra_logger.
+    DATA logger TYPE REF TO zcl_logger_xpra.
+
+    CREATE OBJECT logger
+      EXPORTING settings = logger_settings.
+    result = logger.
+  ENDMETHOD.
+
+  METHOD create_sbal_logger.
+    DATA logger TYPE REF TO zcl_logger_sbal.
+
+    CREATE OBJECT logger
+      EXPORTING object    = object
+                subobject = subobject
+                extnumber = extnumber
+                context   = context
+                settings  = logger_settings.
+    result = logger.
+  ENDMETHOD.
 ENDCLASS.

@@ -1,38 +1,36 @@
 INTERFACE zif_logger_display_profile
   PUBLIC.
+  CONSTANTS:
+    BEGIN OF application_log_profile,
+      multiple_logs                TYPE i VALUE 0,
+      single_log                   TYPE i VALUE 1,
+      fullscreen_without_hierarchy TYPE i VALUE 2,
+      popup_without_hierarchy      TYPE i VALUE 3,
+      hierarchy_by_detail_level    TYPE i VALUE 4,
+    END OF application_log_profile.
 
-  METHODS set
-    IMPORTING
-      i_detlevel   TYPE clike OPTIONAL
-      i_no_tree    TYPE clike OPTIONAL
-      i_popup      TYPE clike OPTIONAL
-      i_single_log TYPE clike OPTIONAL
-      i_standard   TYPE clike DEFAULT abap_true
-    RETURNING
-      VALUE(r_self) TYPE REF TO zif_logger_display_profile.
   METHODS get
-    RETURNING
-      VALUE(r_display_profile) TYPE bal_s_prof.
+    RETURNING VALUE(result) TYPE bal_s_prof.
+
+  METHODS set_predefined_profile
+    IMPORTING profile_type  TYPE i
+    RETURNING VALUE(result) TYPE REF TO zif_logger_display_profile.
+
   METHODS set_grid
-    IMPORTING
-      i_grid_mode  TYPE clike
-    RETURNING
-      VALUE(r_self) TYPE REF TO zif_logger_display_profile.
+    IMPORTING grid_mode     TYPE clike
+    RETURNING VALUE(result) TYPE REF TO zif_logger_display_profile.
+
   METHODS set_value
-    IMPORTING
-      i_fld        TYPE clike
-      i_val        TYPE any
-    RETURNING
-      VALUE(r_self) TYPE REF TO zif_logger_display_profile.
+    IMPORTING !field        TYPE clike
+              !value        TYPE any
+    RETURNING VALUE(result) TYPE REF TO zif_logger_display_profile.
+
   METHODS set_context_tree
-    IMPORTING
-      i_context_structure TYPE clike
-      i_under_log         TYPE clike DEFAULT space
-    RETURNING
-      VALUE(r_self) TYPE REF TO zif_logger_display_profile.
+    IMPORTING context_structure TYPE clike
+              under_log         TYPE clike DEFAULT space
+    RETURNING VALUE(result)     TYPE REF TO zif_logger_display_profile.
+
   METHODS set_context_message
-    IMPORTING
-      i_context_structure TYPE clike
-    RETURNING
-      VALUE(r_self) TYPE REF TO zif_logger_display_profile.
+    IMPORTING context_structure TYPE clike
+    RETURNING VALUE(result)       TYPE REF TO zif_logger_display_profile.
 ENDINTERFACE.

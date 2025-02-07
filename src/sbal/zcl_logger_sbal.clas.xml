@@ -3,21 +3,15 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <VSEOCLASS>
-    <CLSNAME>ZCL_LOGGER_FACTORY</CLSNAME>
+    <CLSNAME>ZCL_LOGGER_SBAL</CLSNAME>
     <LANGU>E</LANGU>
-    <DESCRIPT>ABAP Logger: Factory</DESCRIPT>
+    <DESCRIPT>ABAP Logger for Application Log</DESCRIPT>
     <STATE>1</STATE>
     <CLSCCINCL>X</CLSCCINCL>
     <FIXPT>X</FIXPT>
     <UNICODE>X</UNICODE>
+    <WITH_UNIT_TESTS>X</WITH_UNIT_TESTS>
    </VSEOCLASS>
-   <DESCRIPTIONS>
-    <SEOCOMPOTX>
-     <CMPNAME>XPRA_JOB_NAME</CMPNAME>
-     <LANGU>E</LANGU>
-     <DESCRIPT>Name of background job which executes XPRA reports</DESCRIPT>
-    </SEOCOMPOTX>
-   </DESCRIPTIONS>
   </asx:values>
  </asx:abap>
 </abapGit>
