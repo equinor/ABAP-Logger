@@ -3,7 +3,7 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <DEVC>
-    <CTEXT>ABAP Logger implementation for XPRAs</CTEXT>
+    <CTEXT>ABAP Logger implementation for Transport Organizer</CTEXT>
     <COMP_POSID>BC-CTS-ORG</COMP_POSID>
     <COMPONENT>HLB0009076</COMPONENT>
    </DEVC>

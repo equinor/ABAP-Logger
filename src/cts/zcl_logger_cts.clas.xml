@@ -3,7 +3,7 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <VSEOCLASS>
-    <CLSNAME>ZCL_LOGGER_XPRA</CLSNAME>
+    <CLSNAME>ZCL_LOGGER_CTS</CLSNAME>
     <LANGU>E</LANGU>
     <DESCRIPT>ABAP Logger for XPRA</DESCRIPT>
     <STATE>1</STATE>

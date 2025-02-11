@@ -77,12 +77,6 @@ CLASS zcl_logger_factory DEFINITION
     CLASS-DATA log_collection      TYPE REF TO zif_logger_collection.
     CLASS-DATA log_display_profile TYPE REF TO zif_logger_display_profile.
 
-    CLASS-METHODS find_log_headers
-      IMPORTING !object       TYPE csequence OPTIONAL
-                subobject     TYPE csequence OPTIONAL
-                extnumber     TYPE csequence OPTIONAL
-                db_number     TYPE balognr   OPTIONAL
-      RETURNING VALUE(result) TYPE balhdr_t.
 
     CLASS-METHODS get_settings
       IMPORTING settings      TYPE REF TO zif_logger_settings
@@ -106,7 +100,7 @@ CLASS zcl_logger_factory DEFINITION
                 subobject       TYPE csequence OPTIONAL
                 extnumber       TYPE csequence OPTIONAL
                 !context        TYPE any       OPTIONAL
-      RETURNING VALUE(result)   TYPE REF TO zcl_logger_sbal.
+      RETURNING VALUE(result)   TYPE REF TO zcl_logger_bal.
 ENDCLASS.
 
 
@@ -139,11 +133,12 @@ CLASS zcl_logger_factory IMPLEMENTATION.
     ELSEIF is_executing_as_xpra( ) = abap_true.
       result = create_xpra_logger( get_settings( settings ) ).
     ELSE.
-      result = create_sbal_logger( object          = object
+      result = create_sbal_logger( logger_settings = get_settings( settings )
+                                   object          = object
                                    subobject       = subobject
                                    extnumber       = extnumber
                                    context         = context
-                                   logger_settings = get_settings( settings ) ).
+                                    ).
     ENDIF.
   ENDMETHOD.
 
@@ -159,9 +154,9 @@ CLASS zcl_logger_factory IMPLEMENTATION.
     DATA found_headers      TYPE balhdr_t.
     DATA most_recent_header TYPE balhdr.
 
-    found_headers = find_log_headers( object    = object
-                                      subobject = subobject
-                                      extnumber = extnumber ).
+    found_headers = zcl_logger_bal=>find_log_headers( object    = object
+                                                       subobject = subobject
+                                                       extnumber = extnumber ).
 
     IF lines( found_headers ) = 0.
       IF create_if_does_not_exist = abap_true.
@@ -178,51 +173,13 @@ CLASS zcl_logger_factory IMPLEMENTATION.
       DELETE found_headers TO ( lines( found_headers ) - 1 ).
     ENDIF.
     READ TABLE found_headers INDEX 1 INTO most_recent_header.
-
-    result = open_log_by_header( header   = most_recent_header
-                                 settings = settings ).
+    result = zcl_logger_bal=>open_existing_log( log_header = most_recent_header
+                                                 settings   = settings ).
   ENDMETHOD.
 
   METHOD open_log_by_db_number.
-    DATA header      TYPE balhdr.
-    DATA log_headers TYPE balhdr_t.
-
-    log_headers = find_log_headers( db_number = db_number ).
-    IF lines( log_headers ) <> 1.
-      "^Should find exactly one log since db_number is unique identifier
-      RAISE EXCEPTION TYPE zcx_logger.
-    ENDIF.
-
-    READ TABLE log_headers INDEX 1 INTO header.
-    result = open_log_by_header( header   = header
-                                 settings = settings ).
-  ENDMETHOD.
-
-  METHOD find_log_headers.
-    DATA filter      TYPE bal_s_lfil.
-    DATA l_object    TYPE balobj_d.
-    DATA l_subobject TYPE balsubobj.
-    DATA ext_number  TYPE balnrext.
-    DATA log_numbers TYPE bal_t_logn.
-
-    l_object    = object.
-    l_subobject = subobject.
-    ext_number = extnumber.
-    IF db_number IS SUPPLIED.
-      INSERT db_number INTO TABLE log_numbers.
-    ENDIF.
-
-    CALL FUNCTION 'BAL_FILTER_CREATE'
-      EXPORTING i_object       = l_object
-                i_subobject    = l_subobject
-                i_extnumber    = ext_number
-                i_t_lognumber  = log_numbers
-      IMPORTING e_s_log_filter = filter.
-
-    CALL FUNCTION 'BAL_DB_SEARCH'
-      EXPORTING  i_s_log_filter = filter
-      IMPORTING  e_t_log_header = result
-      EXCEPTIONS log_not_found  = 1.
+    result = zcl_logger_bal=>open_existing_log( log_number = db_number
+                                                 settings   = settings ).
   ENDMETHOD.
 
   METHOD get_settings.
@@ -254,23 +211,41 @@ CLASS zcl_logger_factory IMPLEMENTATION.
 
   METHOD open_log_by_header.
     DATA log_headers TYPE balhdr_t.
+    data log_handles type bal_t_msgh.
 
     INSERT header INTO TABLE log_headers.
 
     " If you call BAL_DB_LOAD for a log that is already loaded, it doesn't return its handle, so don't rely on returned data
     CALL FUNCTION 'BAL_DB_LOAD'
       EXPORTING  i_t_log_header     = log_headers
-      EXCEPTIONS no_logs_specified  = 1                " No logs specified
+                 i_exception_if_already_loaded = 'X'
+      importing et_log_handle = log_handles
+      EXCEPTIONS no_logs_specified  = 1                "
                  log_not_found      = 2                " Log not found
                  log_already_loaded = 3                " Log is already loaded
                  OTHERS             = 4.
-    IF sy-subrc <> 0.
-      RAISE EXCEPTION TYPE zcx_logger.
-    ENDIF.
+    case sy-subrc.
+     when 0.
+       "Open log
+     when 1.
+       RAISE EXCEPTION TYPE zcx_logger
+         exporting info = 'No logs specified for BAL_DB_LOAD'.
+     when 2.
+       RAISE EXCEPTION TYPE zcx_logger
+         exporting info = |Log with handle '{ header-log_handle }' not found by BAL_DB_LOAD|.
+     when 3.
+       "open log
 
-    DATA logger TYPE REF TO zcl_logger_sbal.
+     when others.
+      RAISE EXCEPTION TYPE zcx_logger.
+    ENDcase.
+
+    DATA logger TYPE REF TO zcl_logger_bal.
     IF log_logger IS INITIAL.
-      logger = create_sbal_logger( logger_settings = get_settings( settings ) ).
+      logger = create_sbal_logger( logger_settings = get_settings( settings )
+                                   object          = header-object
+                                   subobject       = header-subobject
+                                   extnumber       = header-extnumber ).
       logger->handle    = header-log_handle.
       logger->db_number = header-lognumber.
       result = logger.
@@ -292,14 +267,13 @@ CLASS zcl_logger_factory IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD create_sbal_logger.
-    DATA logger TYPE REF TO zcl_logger_sbal.
+    DATA logger TYPE REF TO zcl_logger_bal.
 
-    CREATE OBJECT logger
-      EXPORTING object    = object
-                subobject = subobject
-                extnumber = extnumber
-                context   = context
-                settings  = logger_settings.
+    logger = zcl_logger_bal=>create_new_log( object    = object
+                                              subobject = subobject
+                                              extnumber = extnumber
+                                              context   = context
+                                              settings  = logger_settings ).
     result = logger.
   ENDMETHOD.
 ENDCLASS.

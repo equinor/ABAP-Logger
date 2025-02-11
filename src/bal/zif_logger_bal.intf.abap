@@ -1,4 +1,4 @@
-INTERFACE zif_logger_sbal
+INTERFACE zif_logger_bal
   PUBLIC.
   METHODS get_handle
     RETURNING VALUE(result) TYPE balloghndl.

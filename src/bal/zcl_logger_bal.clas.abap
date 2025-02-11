@@ -1,19 +1,15 @@
-CLASS zcl_logger_sbal DEFINITION
+CLASS zcl_logger_bal DEFINITION
   PUBLIC
   INHERITING FROM zcl_logger
   CREATE PROTECTED
   GLOBAL FRIENDS zcl_logger_factory.
 
   PUBLIC SECTION.
-    INTERFACES zif_logger_sbal.
+    INTERFACES zif_logger_bal.
     INTERFACES zif_logger_ui.
 
     METHODS constructor
-      IMPORTING !object   TYPE csequence                  OPTIONAL
-                subobject TYPE csequence                  OPTIONAL
-                extnumber TYPE csequence                  OPTIONAL
-                !context  TYPE any                        OPTIONAL
-                settings  TYPE REF TO zif_logger_settings OPTIONAL.
+      IMPORTING settings TYPE REF TO zif_logger_settings OPTIONAL.
 
     METHODS zif_logger~set_header                   REDEFINITION.
     METHODS zif_logger_log_object~get_message_table REDEFINITION.
@@ -29,9 +25,9 @@ CLASS zcl_logger_sbal DEFINITION
     DATA header         TYPE bal_s_log.
     DATA control_handle TYPE balcnthndl.
 
-    METHODS add_text_string           REDEFINITION.
-    METHODS add_message               REDEFINITION.
     METHODS add_exception_with_textid REDEFINITION.
+    METHODS add_message               REDEFINITION.
+    METHODS add_text_string           REDEFINITION.
 
     METHODS save_log                  REDEFINITION.
 
@@ -40,46 +36,172 @@ CLASS zcl_logger_sbal DEFINITION
       RETURNING VALUE(rt_message_handles) TYPE bal_t_msgh.
 
   PRIVATE SECTION.
+    CLASS-METHODS create_new_log
+      IMPORTING !object       TYPE csequence                  OPTIONAL
+                subobject     TYPE csequence                  OPTIONAL
+                extnumber     TYPE csequence                  OPTIONAL
+                !context      TYPE any                        OPTIONAL
+                settings      TYPE REF TO zif_logger_settings OPTIONAL
+      RETURNING VALUE(result) TYPE REF TO zcl_logger_bal.
 
+    CLASS-METHODS open_existing_log
+      IMPORTING log_header    TYPE balhdr                     OPTIONAL
+                log_handle    TYPE balloghndl                 OPTIONAL
+                log_number    TYPE balognr                    OPTIONAL
+                settings      TYPE REF TO zif_logger_settings OPTIONAL
+      RETURNING VALUE(result) TYPE REF TO zcl_logger_bal.
+
+    CLASS-METHODS find_log_headers
+      IMPORTING !object       TYPE csequence OPTIONAL
+                subobject     TYPE csequence OPTIONAL
+                extnumber     TYPE csequence OPTIONAL
+                db_number     TYPE balognr   OPTIONAL
+      RETURNING VALUE(result) TYPE balhdr_t.
+
+    METHODS exception_after_bal_log_subrc
+      IMPORTING VALUE(return_code)   TYPE syst_subrc
+                function_module_name TYPE funcname.
 ENDCLASS.
 
 
-CLASS zcl_logger_sbal IMPLEMENTATION.
+CLASS zcl_logger_bal IMPLEMENTATION.
   METHOD constructor.
+    super->constructor( settings ).
+  ENDMETHOD.
+
+  METHOD create_new_log.
     FIELD-SYMBOLS <context_val> TYPE c.
 
-    super->constructor( settings ).
+    CREATE OBJECT result
+      EXPORTING settings = settings.
 
-    header-object    = object.
-    header-subobject = subobject.
-    header-extnumber = extnumber.
-    header-context   = context.
+    result->header-object    = object.
+    result->header-subobject = subobject.
+    result->header-extnumber = extnumber.
+    result->header-context   = context.
 
     " Special case: Logger can work without object - but then the data cannot be written to the database.
-    IF header-object IS INITIAL.
-      me->settings->set_autosave( abap_false ).
+    IF result->header-object IS INITIAL.
+      result->settings->set_autosave( abap_false ).
     ENDIF.
 
     " Set deletion date and set if log can be deleted before deletion date is reached.
-    header-aldate_del = me->settings->get_expiry_date( ).
-    header-del_before = me->settings->get_must_be_kept_until_expiry( ).
+    result->header-aldate_del = result->settings->get_expiry_date( ).
+    result->header-del_before = result->settings->get_must_be_kept_until_expiry( ).
 
     IF context IS SUPPLIED AND context IS NOT INITIAL.
-      header-context-tabname =
+      result->header-context-tabname =
         cl_abap_typedescr=>describe_by_data( context )->get_ddic_header( )-tabname.
       ASSIGN context TO <context_val> CASTING.
-      header-context-value = <context_val>.
+      result->header-context-value = <context_val>.
     ENDIF.
 
     CALL FUNCTION 'BAL_LOG_CREATE'
-      EXPORTING i_s_log      = header
-      IMPORTING e_log_handle = handle.
+      EXPORTING i_s_log      = result->header
+      IMPORTING e_log_handle = result->handle.
 
     " BAL_LOG_CREATE will fill in some additional header data.
     " This FM updates our instance attribute to reflect that.
     CALL FUNCTION 'BAL_LOG_HDR_READ'
-      EXPORTING i_log_handle = handle
-      IMPORTING e_s_log      = header.
+      EXPORTING i_log_handle = result->handle
+      IMPORTING e_s_log      = result->header.
+  ENDMETHOD.
+
+  METHOD open_existing_log.
+    DATA log_headers        TYPE balhdr_t.
+    DATA log_handles        TYPE bal_t_logh.
+    DATA log_numbers        TYPE bal_t_logn.
+    DATA opened_log_handles TYPE bal_t_logh.
+    DATA opened_log_handle  LIKE LINE OF opened_log_handles.
+
+    IF log_header IS INITIAL AND log_handle IS INITIAL AND log_number IS INITIAL.
+      RAISE EXCEPTION TYPE zcx_logger
+        EXPORTING info = |Log to open must be identified by header, handle or number|.
+    ENDIF.
+
+    CREATE OBJECT result
+      EXPORTING settings = settings.
+
+    IF log_header IS NOT INITIAL.
+      APPEND log_header TO log_headers.
+    ENDIF.
+    IF log_handle IS NOT INITIAL.
+      APPEND log_handle TO log_handles.
+    ENDIF.
+    IF log_number IS NOT INITIAL.
+      APPEND log_number TO log_numbers.
+    ENDIF.
+
+    CALL FUNCTION 'BAL_DB_LOAD'
+      EXPORTING  i_t_log_header                = log_headers
+                 i_t_log_handle                = log_handles
+                 i_t_lognumber                 = log_numbers
+                 i_exception_if_already_loaded = 'X'
+      IMPORTING  e_t_log_handle                = opened_log_handles
+      EXCEPTIONS no_logs_specified             = 1
+                 log_not_found                 = 2
+                 log_already_loaded            = 3
+                 OTHERS                        = 4.
+    CASE sy-subrc.
+      WHEN 0.
+        READ TABLE opened_log_handles INDEX 1 INTO opened_log_handle.
+      WHEN 1.
+        RAISE EXCEPTION TYPE zcx_logger
+          EXPORTING info = |BAL_DB_LOAD exception: No logs specified|.
+      WHEN 2.
+        RAISE EXCEPTION TYPE zcx_logger
+          EXPORTING info = |BAL_DB_LOAD exception: Log not found|.
+      WHEN 3.
+        opened_log_handle = log_handle.
+      WHEN OTHERS.
+        RAISE EXCEPTION TYPE zcx_logger
+          EXPORTING info = |BAL_DB_LOAD return code { sy-subrc }|.
+    ENDCASE.
+
+    CALL FUNCTION 'BAL_LOG_HDR_READ'
+      EXPORTING  i_log_handle  = opened_log_handle
+      IMPORTING  e_s_log       = result->header
+                 e_lognumber   = result->db_number
+      EXCEPTIONS log_not_found = 1
+                 OTHERS        = 2.
+    CASE sy-subrc.
+      WHEN 0.
+      WHEN 1.
+        RAISE EXCEPTION TYPE zcx_logger
+          EXPORTING info = |BAL_LOG_HDR_READ exception: Log not found|.
+      WHEN OTHERS.
+        RAISE EXCEPTION TYPE zcx_logger
+          EXPORTING info = |BAL_LOG_HDR_READ return code { sy-subrc }|.
+    ENDCASE.
+
+    result->handle = opened_log_handle.
+  ENDMETHOD.
+
+  METHOD find_log_headers.
+    DATA filter      TYPE bal_s_lfil.
+    DATA l_object    TYPE balobj_d.
+    DATA l_subobject TYPE balsubobj.
+    DATA ext_number  TYPE balnrext.
+    DATA log_numbers TYPE bal_t_logn.
+
+    l_object    = object.
+    l_subobject = subobject.
+    ext_number = extnumber.
+    IF db_number IS SUPPLIED.
+      INSERT db_number INTO TABLE log_numbers.
+    ENDIF.
+
+    CALL FUNCTION 'BAL_FILTER_CREATE'
+      EXPORTING i_object       = l_object
+                i_subobject    = l_subobject
+                i_extnumber    = ext_number
+                i_t_lognumber  = log_numbers
+      IMPORTING e_s_log_filter = filter.
+
+    CALL FUNCTION 'BAL_DB_SEARCH'
+      EXPORTING  i_s_log_filter = filter
+      IMPORTING  e_t_log_header = result
+      EXCEPTIONS log_not_found  = 1.
   ENDMETHOD.
 
   METHOD get_message_handles.
@@ -179,6 +301,71 @@ CLASS zcl_logger_sbal IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
+  METHOD add_exception_with_textid.
+    CALL FUNCTION 'BAL_LOG_EXCEPTION_ADD'
+      EXPORTING  i_log_handle     = handle
+                 i_s_exc          = exception_data
+      EXCEPTIONS log_not_found    = 1
+                 msg_inconsistent = 2
+                 log_is_full      = 3
+                 OTHERS           = 4.
+    IF sy-subrc <> 0.
+      exception_after_bal_log_subrc( return_code          = sy-subrc
+                                     function_module_name = 'BAL_LOG_EXCEPTION_ADD' ).
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD add_message.
+    CALL FUNCTION 'BAL_LOG_MSG_ADD'
+      EXPORTING  i_log_handle     = handle
+                 i_s_msg          = application_log_message
+      EXCEPTIONS log_not_found    = 1
+                 msg_inconsistent = 2
+                 log_is_full      = 3
+                 OTHERS           = 4.
+    IF sy-subrc <> 0.
+      exception_after_bal_log_subrc( return_code          = sy-subrc
+                                     function_module_name = 'BAL_LOG_MSG_ADD' ).
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD add_text_string.
+    TRY.
+        CALL FUNCTION 'BAL_LOG_MSG_ADD_FREE_TEXT'
+          EXPORTING  i_log_handle     = me->handle
+                     i_msgty          = message_type
+                     i_probclass      = importance
+                     i_text           = text_string
+                     i_s_context      = log_context
+                     i_s_params       = log_parameters
+                     i_detlevel       = detail_level
+          EXCEPTIONS log_not_found    = 1
+                     msg_inconsistent = 2
+                     log_is_full      = 3
+                     OTHERS           = 4.
+        IF sy-subrc <> 0.
+          exception_after_bal_log_subrc( return_code          = sy-subrc
+                                         function_module_name = 'BAL_LOG_MSG_ADD_FREE_TEXT' ).
+        ENDIF.
+      CATCH cx_sy_dyn_call_param_not_found.
+        CALL FUNCTION 'BAL_LOG_MSG_ADD_FREE_TEXT'
+          EXPORTING  i_log_handle     = me->handle
+                     i_msgty          = message_type
+                     i_probclass      = importance
+                     i_text           = text_string
+                     i_s_context      = log_context
+                     i_s_params       = log_parameters
+          EXCEPTIONS log_not_found    = 1
+                     msg_inconsistent = 2
+                     log_is_full      = 3
+                     OTHERS           = 4.
+        IF sy-subrc <> 0.
+          exception_after_bal_log_subrc( return_code          = sy-subrc
+                                         function_module_name = 'BAL_LOG_MSG_ADD_FREE_TEXT' ).
+        ENDIF.
+    ENDTRY.
+  ENDMETHOD.
+
   METHOD save_log.
     DATA log_handles       TYPE bal_t_logh.
     DATA log_numbers       TYPE bal_t_lgnm.
@@ -213,16 +400,21 @@ CLASS zcl_logger_sbal IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
-  METHOD add_exception_with_textid.
-    CALL FUNCTION 'BAL_LOG_EXCEPTION_ADD'
-      EXPORTING i_log_handle = handle
-                i_s_exc      = exception_data.
-  ENDMETHOD.
-
-  METHOD add_message.
-    CALL FUNCTION 'BAL_LOG_MSG_ADD'
-      EXPORTING i_log_handle = handle
-                i_s_msg      = application_log_message.
+  METHOD exception_after_bal_log_subrc.
+    CASE return_code.
+      WHEN 1.
+        RAISE EXCEPTION TYPE zcx_logger
+          EXPORTING info = |{ function_module_name } exception: Log not found|.
+      WHEN 2.
+        RAISE EXCEPTION TYPE zcx_logger
+          EXPORTING info = |{ function_module_name } exception: Message inconsistent|.
+      WHEN 3.
+        RAISE EXCEPTION TYPE zcx_logger
+          EXPORTING info = |{ function_module_name } exception: Log is full|.
+      WHEN OTHERS.
+        RAISE EXCEPTION TYPE zcx_logger
+          EXPORTING info = |{ function_module_name } return code { return_code }|.
+    ENDCASE.
   ENDMETHOD.
 
   METHOD zif_logger~set_header.
@@ -346,78 +538,20 @@ CLASS zcl_logger_sbal IMPLEMENTATION.
     result = lines( get_message_handles( ) ).
   ENDMETHOD.
 
-  METHOD zif_logger_sbal~get_control_handle.
+  METHOD zif_logger_bal~get_control_handle.
     result = control_handle.
   ENDMETHOD.
 
-  METHOD zif_logger_sbal~get_db_number.
+  METHOD zif_logger_bal~get_db_number.
     result = db_number.
   ENDMETHOD.
 
-  METHOD zif_logger_sbal~get_handle.
+  METHOD zif_logger_bal~get_handle.
     result = handle.
   ENDMETHOD.
 
-  METHOD zif_logger_sbal~get_header.
+  METHOD zif_logger_bal~get_header.
     result = header.
   ENDMETHOD.
 
-  METHOD add_text_string.
-    TRY.
-        CALL FUNCTION 'BAL_LOG_MSG_ADD_FREE_TEXT'
-          EXPORTING  i_log_handle     = me->handle
-                     i_msgty          = message_type
-                     i_probclass      = importance
-                     i_text           = text_string
-                     i_s_context      = log_context
-                     i_s_params       = log_parameters
-                     i_detlevel       = detail_level
-          EXCEPTIONS log_not_found    = 1
-                     msg_inconsistent = 2
-                     log_is_full      = 3
-                     OTHERS           = 4.
-        IF sy-subrc <> 0.
-          CASE sy-subrc.
-            WHEN 1.
-              RAISE EXCEPTION TYPE zcx_logger
-                EXPORTING info = 'Log not found'.
-            WHEN 2.
-              RAISE EXCEPTION TYPE zcx_logger
-                EXPORTING info = 'Message inconsistent'.
-            WHEN 3.
-              RAISE EXCEPTION TYPE zcx_logger
-                EXPORTING info = 'Log is full'.
-            WHEN OTHERS.
-              RAISE EXCEPTION TYPE zcx_logger.
-          ENDCASE.
-        ENDIF.
-      CATCH cx_sy_dyn_call_param_not_found.
-        CALL FUNCTION 'BAL_LOG_MSG_ADD_FREE_TEXT'
-          EXPORTING  i_log_handle     = me->handle
-                     i_msgty          = message_type
-                     i_probclass      = importance
-                     i_text           = text_string
-                     i_s_context      = log_context
-                     i_s_params       = log_parameters
-          EXCEPTIONS log_not_found    = 1
-                     msg_inconsistent = 2
-                     log_is_full      = 3
-                     OTHERS           = 4.
-        IF sy-subrc <> 0.
-          CASE sy-subrc.
-            WHEN 1.
-              RAISE EXCEPTION TYPE zcx_logger
-                EXPORTING info = 'Log not found'.
-            WHEN 2.
-              RAISE EXCEPTION TYPE zcx_logger
-                EXPORTING info = 'Message inconsistent'.
-            WHEN 3.
-              RAISE EXCEPTION TYPE zcx_logger
-                EXPORTING info = 'Log is full'.
-            WHEN OTHERS.
-              RAISE EXCEPTION TYPE zcx_logger.
-          ENDCASE.
-        ENDIF.
-    ENDTRY.
-  ENDMETHOD.
 ENDCLASS.

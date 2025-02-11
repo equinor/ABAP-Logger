@@ -1,6 +1,6 @@
 *"* use this source file for your ABAP unit test classes
 CLASS lcl_test DEFINITION DEFERRED.
-CLASS zcl_logger_sbal DEFINITION LOCAL FRIENDS lcl_test.
+CLASS zcl_logger_bal DEFINITION LOCAL FRIENDS lcl_test.
 
 CLASS ltd_loggable_object DEFINITION CREATE PUBLIC FOR TESTING.
 
@@ -19,15 +19,16 @@ CLASS ltd_loggable_object IMPLEMENTATION.
 ENDCLASS.
 
 
-CLASS lcl_test_no_friend DEFINITION
+CLASS lcl_factory_tests DEFINITION
   FOR TESTING RISK LEVEL HARMLESS DURATION SHORT.
 
   PRIVATE SECTION.
-    METHODS must_use_factory FOR TESTING RAISING cx_static_check.
+    METHODS must_use_factory   FOR TESTING RAISING cx_static_check.
+    METHODS can_open_or_create FOR TESTING RAISING cx_static_check.
 ENDCLASS.
 
 
-CLASS lcl_test_no_friend IMPLEMENTATION.
+CLASS lcl_factory_tests IMPLEMENTATION.
   METHOD must_use_factory.
     " TODO: variable is assigned but never used (ABAP cleaner)
     DATA log TYPE REF TO object.
@@ -39,6 +40,28 @@ CLASS lcl_test_no_friend IMPLEMENTATION.
         " PASSED
     ENDTRY.
   ENDMETHOD.
+
+  METHOD can_open_or_create.
+    DATA existing_log TYPE REF TO zif_logger ##NEEDED.
+    DATA created_log  TYPE REF TO zif_logger ##NEEDED.
+    DATA handles      TYPE bal_t_logh.
+
+    CALL FUNCTION 'BAL_GLB_MEMORY_REFRESH'.                " Close Logs
+    existing_log = zcl_logger_factory=>open_log( object                   = 'ABAPUNIT'
+                                                 subobject                = ''
+                                                 extnumber                = 'Log saved in database'
+                                                 create_if_does_not_exist = abap_true ).
+    created_log = zcl_logger_factory=>open_log( object                   = 'ABAPUNIT'
+                                                subobject                = ''
+                                                extnumber                = 'Log not in database'
+                                                create_if_does_not_exist = abap_true ).
+    CALL FUNCTION 'BAL_GLB_SEARCH_LOG'
+      IMPORTING e_t_log_handle = handles.
+
+    cl_abap_unit_assert=>assert_equals( exp = 2
+                                        act = lines( handles )
+                                        msg = 'Did not create nonexistent log from OPEN' ).
+  ENDMETHOD.
 ENDCLASS.
 
 
@@ -48,9 +71,11 @@ CLASS lcl_test DEFINITION
   PRIVATE SECTION.
     TYPES ty_bal_tt_msg TYPE STANDARD TABLE OF bal_s_msg.
 
-    DATA anon_log     TYPE REF TO zcl_logger_sbal.
-    DATA named_log    TYPE REF TO zcl_logger_sbal.
-    DATA reopened_log TYPE REF TO zcl_logger_sbal.
+    DATA anon_log     TYPE REF TO zcl_logger_bal.
+    DATA named_log    TYPE REF TO zcl_logger_bal.
+    DATA reopened_log TYPE REF TO zcl_logger_bal.
+
+    CLASS-DATA saved_log_handle TYPE balloghndl.
 
     CLASS-METHODS class_setup.
 
@@ -75,12 +100,17 @@ CLASS lcl_test DEFINITION
                 v4         LIKE sy-msgv4 DEFAULT sy-msgv4
       RETURNING VALUE(msg) TYPE string.
 
+    METHODS find_most_recent_header
+      IMPORTING !object       TYPE csequence
+                subobject     TYPE csequence
+                extnumber     TYPE csequence
+      RETURNING VALUE(result) TYPE balhdr.
+
     METHODS can_create_anon_log            FOR TESTING.
     METHODS can_create_named_log           FOR TESTING.
     METHODS can_reopen_log                 FOR TESTING.
     METHODS can_create_expiring_log_days   FOR TESTING.
     METHODS can_create_expiring_log_date   FOR TESTING.
-    METHODS can_open_or_create             FOR TESTING.
     METHODS can_add_log_context            FOR TESTING.
     METHODS can_add_to_log                 FOR TESTING.
     METHODS can_add_to_named_log           FOR TESTING.
@@ -128,22 +158,23 @@ ENDCLASS.
 
 CLASS lcl_test IMPLEMENTATION.
   METHOD class_setup.
-    zcl_logger_factory=>create_log( object    = 'ABAPUNIT'
-                                    subobject = ''
-                                    extnumber = 'Log saved in database' )->add( 'This message is in the database' ).
+    DATA saved_log TYPE REF TO zcl_logger_bal.
+
+    saved_log = zcl_logger_bal=>create_new_log( object    = 'ABAPUNIT'
+                                                 subobject = ''
+                                                 extnumber = 'Log saved in database' ).
+    saved_log->zif_logger~add( 'This message is in the database' ).
+    saved_log_handle = saved_log->handle.
   ENDMETHOD.
 
   METHOD setup.
-    CREATE OBJECT anon_log.
+    anon_log = zcl_logger_bal=>create_new_log( ).
 
-    CREATE OBJECT named_log
-      EXPORTING object    = 'ABAPUNIT'
-                subobject = ''
-                extnumber = `Hey it's a log`.
+    named_log = zcl_logger_bal=>create_new_log( object    = 'ABAPUNIT'
+                                                 subobject = ''
+                                                 extnumber = `Hey it's a log` ).
 
-    reopened_log ?= zcl_logger_factory=>open_log( object    = 'ABAPUNIT'
-                                                  subobject = ''
-                                                  extnumber = 'Log saved in database' ).
+    reopened_log = zcl_logger_bal=>open_existing_log( log_handle = saved_log_handle ).
   ENDMETHOD.
 
   METHOD can_create_anon_log.
@@ -157,11 +188,11 @@ CLASS lcl_test IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD can_create_expiring_log_days.
-    DATA expiring_log TYPE REF TO zcl_logger_sbal.
+    DATA expiring_log TYPE REF TO zcl_logger_bal.
     DATA act_header   TYPE bal_s_log.
     CONSTANTS days_until_log_can_be_deleted TYPE i VALUE 365.
 
-    expiring_log ?= zcl_logger_factory=>create_log( object    = 'ABAPUNIT'
+    expiring_log = zcl_logger_bal=>create_new_log( object    = 'ABAPUNIT'
                                                     subobject = ''
                                                     extnumber = 'Log that is not deletable and expiring'
                                                     settings  = zcl_logger_factory=>create_settings(
@@ -186,7 +217,7 @@ CLASS lcl_test IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD can_create_expiring_log_date.
-    DATA expiring_log TYPE REF TO zcl_logger_sbal.
+    DATA expiring_log TYPE REF TO zcl_logger_bal.
     DATA act_header   TYPE bal_s_log.
     CONSTANTS days_until_log_can_be_deleted TYPE i VALUE 365.
 
@@ -194,7 +225,7 @@ CLASS lcl_test IMPLEMENTATION.
 
     lv_expire = sy-datum + days_until_log_can_be_deleted.
 
-    expiring_log ?= zcl_logger_factory=>create_log( object    = 'ABAPUNIT'
+    expiring_log = zcl_logger_bal=>create_new_log( object    = 'ABAPUNIT'
                                                     subobject = ''
                                                     extnumber = 'Log that is not deletable and expiring'
                                                     settings  = zcl_logger_factory=>create_settings(
@@ -220,30 +251,8 @@ CLASS lcl_test IMPLEMENTATION.
                                        msg = 'Cannot Reopen Log from DB' ).
   ENDMETHOD.
 
-  METHOD can_open_or_create.
-    " TODO: variable is assigned but never used (ABAP cleaner)
-    DATA created_log TYPE REF TO zcl_logger_sbal.
-    DATA handles     TYPE bal_t_logh.
-
-    CALL FUNCTION 'BAL_GLB_MEMORY_REFRESH'.                " Close Logs
-    reopened_log ?= zcl_logger_factory=>open_log( object                   = 'ABAPUNIT'
-                                                  subobject                = ''
-                                                  extnumber                = 'Log saved in database'
-                                                  create_if_does_not_exist = abap_true ).
-    created_log ?= zcl_logger_factory=>open_log( object                   = 'ABAPUNIT'
-                                                 subobject                = ''
-                                                 extnumber                = 'Log not in database'
-                                                 create_if_does_not_exist = abap_true ).
-    CALL FUNCTION 'BAL_GLB_SEARCH_LOG'
-      IMPORTING e_t_log_handle = handles.
-
-    cl_abap_unit_assert=>assert_equals( exp = 2
-                                        act = lines( handles )
-                                        msg = 'Did not create nonexistent log from OPEN' ).
-  ENDMETHOD.
-
   METHOD can_add_log_context.
-    DATA log                 TYPE REF TO zcl_logger_sbal.
+    DATA log                 TYPE REF TO zcl_logger_bal.
     DATA random_country_data TYPE t005t.
     DATA act_header          TYPE bal_s_log.
 
@@ -251,7 +260,7 @@ CLASS lcl_test IMPLEMENTATION.
     random_country_data-spras = 'D'.
     random_country_data-land1 = 'DE'.
 
-    log ?= zcl_logger_factory=>create_log( context = random_country_data ).
+    log = zcl_logger_bal=>create_new_log( context = random_country_data ).
 
     CALL FUNCTION 'BAL_LOG_HDR_READ'
       EXPORTING i_log_handle = log->handle
@@ -269,7 +278,7 @@ CLASS lcl_test IMPLEMENTATION.
     DATA dummy TYPE c LENGTH 1 ##NEEDED.
 
     MESSAGE s001(00) WITH 'I' 'test' 'the' 'logger.' INTO dummy.
-    anon_log->add( ).
+    anon_log->zif_logger~add( ).
 
     cl_abap_unit_assert=>assert_equals( exp = 'Itestthelogger.'
                                         act = get_first_message( anon_log->handle )
@@ -280,7 +289,7 @@ CLASS lcl_test IMPLEMENTATION.
     DATA dummy TYPE c LENGTH 1 ##NEEDED.
 
     MESSAGE s001(00) WITH 'Testing' 'a' 'named' 'logger.' INTO dummy.
-    named_log->add( ).
+    named_log->zif_logger~add( ).
 
     cl_abap_unit_assert=>assert_equals( exp = 'Testinganamedlogger.'
                                         act = get_first_message( named_log->handle )
@@ -293,7 +302,7 @@ CLASS lcl_test IMPLEMENTATION.
     DATA msg         TYPE string.
 
     MESSAGE s000(sabp_unit) WITH 'Testing' 'logger' 'that' 'saves.' INTO dummy.
-    named_log->add( ).
+    named_log->zif_logger~add( ).
     msg = format_message( ).
 
     CALL FUNCTION 'BAL_GLB_MEMORY_REFRESH'.
@@ -312,7 +321,7 @@ CLASS lcl_test IMPLEMENTATION.
     DATA act_texts   TYPE table_of_strings.
     DATA act_text    TYPE string.
 
-    reopened_log->add( 'This is another message in the database' ).
+    reopened_log->zif_logger~add( 'This is another message in the database' ).
     CALL FUNCTION 'BAL_GLB_MEMORY_REFRESH'.
 
     INSERT reopened_log->db_number INTO TABLE log_numbers.
@@ -336,7 +345,7 @@ CLASS lcl_test IMPLEMENTATION.
   METHOD can_log_string.
     DATA stringmessage TYPE string VALUE `Logging a string, guys!`.
 
-    anon_log->add( stringmessage ).
+    anon_log->zif_logger~add( stringmessage ).
 
     cl_abap_unit_assert=>assert_equals( exp = stringmessage
                                         act = get_first_message( anon_log->handle )
@@ -346,7 +355,7 @@ CLASS lcl_test IMPLEMENTATION.
   METHOD can_log_char.
     DATA charmessage TYPE char70 VALUE 'Logging a char sequence!'.
 
-    anon_log->add( charmessage ).
+    anon_log->zif_logger~add( charmessage ).
 
     cl_abap_unit_assert=>assert_equals( exp = charmessage
                                         act = get_first_message( anon_log->handle )
@@ -375,7 +384,7 @@ CLASS lcl_test IMPLEMENTATION.
     symsg-msgv4 = 'test'.
     expected_details-msgv4 = symsg-msgv4.
 
-    anon_log->add( symsg ).
+    anon_log->zif_logger~add( symsg ).
 
     msg_handle-log_handle = anon_log->handle.
     msg_handle-msgnumber  = '000001'.
@@ -424,7 +433,7 @@ CLASS lcl_test IMPLEMENTATION.
     bapi_msg-message_v4 = 'test'.
     expected_details-msgv4 = bapi_msg-message_v4.
 
-    anon_log->add( bapi_msg ).
+    anon_log->zif_logger~add( bapi_msg ).
 
     msg_handle-log_handle = anon_log->handle.
     msg_handle-msgnumber  = '000001'.
@@ -469,7 +478,7 @@ CLASS lcl_test IMPLEMENTATION.
     bapi_msg-message_v4 = 'test'.
     expected_details-msgv4 = bapi_msg-message_v4.
 
-    anon_log->add( bapi_msg ).
+    anon_log->zif_logger~add( bapi_msg ).
 
     msg_handle-log_handle = anon_log->handle.
     msg_handle-msgnumber  = '000001'.
@@ -519,7 +528,7 @@ CLASS lcl_test IMPLEMENTATION.
     bapi_msg-message_v4 = 'test'.
     expected_details-msgv4 = bapi_msg-message_v4.
 
-    anon_log->add( bapi_msg ).
+    anon_log->zif_logger~add( bapi_msg ).
 
     msg_handle-log_handle = anon_log->handle.
     msg_handle-msgnumber  = '000001'.
@@ -578,7 +587,7 @@ CLASS lcl_test IMPLEMENTATION.
     bapi_return_temp-message_v4 = 'test'.
     expected_details-msgv4 = bapi_return_temp-message_v4.
     MOVE-CORRESPONDING bapi_return_temp TO <bapi_order_return_structure>.
-    anon_log->add( <bapi_order_return_structure> ).
+    anon_log->zif_logger~add( <bapi_order_return_structure> ).
 
     msg_handle-log_handle = anon_log->handle.
     msg_handle-msgnumber  = '000001'.
@@ -633,7 +642,7 @@ CLASS lcl_test IMPLEMENTATION.
 
     MOVE-CORRESPONDING expected_details TO <rcomp_structure>.
 
-    anon_log->add( <rcomp_structure> ).
+    anon_log->zif_logger~add( <rcomp_structure> ).
 
     msg_handle-log_handle = anon_log->handle.
     msg_handle-msgnumber  = '000001'.
@@ -688,7 +697,7 @@ CLASS lcl_test IMPLEMENTATION.
 
     MOVE-CORRESPONDING expected_details TO <prott_structure>.
 
-    anon_log->add( <prott_structure> ).
+    anon_log->zif_logger~add( <prott_structure> ).
 
     msg_handle-log_handle = anon_log->handle.
     msg_handle-msgnumber  = '000001'.
@@ -736,7 +745,7 @@ CLASS lcl_test IMPLEMENTATION.
     sprot_msg-var4 = 'test'.
     expected_details-msgv4 = sprot_msg-var4.
 
-    anon_log->add( sprot_msg ).
+    anon_log->zif_logger~add( sprot_msg ).
 
     msg_handle-log_handle = anon_log->handle.
     msg_handle-msgnumber  = '000001'.
@@ -779,7 +788,7 @@ CLASS lcl_test IMPLEMENTATION.
 
     expected_details = bal_s_msg.
 
-    anon_log->add( bal_s_msg ).
+    anon_log->zif_logger~add( bal_s_msg ).
 
     msg_handle-log_handle = anon_log->handle.
     msg_handle-msgnumber  = '000001'.
@@ -843,7 +852,7 @@ CLASS lcl_test IMPLEMENTATION.
     bapiret_messages_are 'W' 'BL' '001' 'This' 'is' 'warning' 'message'.
     bapiret_messages_are 'E' 'BL' '001' 'This' 'is' 'angry' 'message'.
 
-    anon_log->add( bapi_messages ).
+    anon_log->zif_logger~add( bapi_messages ).
 
     get_messages( EXPORTING log_handle  = anon_log->handle
                   IMPORTING texts       = act_texts
@@ -884,7 +893,7 @@ CLASS lcl_test IMPLEMENTATION.
     TRY.
         impossible_int = 1 / 0.                            " Make an error!
       CATCH cx_sy_zerodivide INTO err.
-        anon_log->add( err ).
+        anon_log->zif_logger~add( err ).
         exp_txt   = err->if_message~get_text( ).
         long_text = err->if_message~get_longtext( ).
     ENDTRY.
@@ -934,7 +943,7 @@ CLASS lcl_test IMPLEMENTATION.
     TRY.
         RAISE EXCEPTION main_exception.
       CATCH lcx_t100 INTO caught_exception.
-        anon_log->add( caught_exception ).
+        anon_log->zif_logger~add( caught_exception ).
     ENDTRY.
 
     " Then
@@ -990,7 +999,7 @@ CLASS lcl_test IMPLEMENTATION.
     batch_messages_are
       'S' 'SABP_UNIT' '000' 'This' 'is' 'test' 'message'.
 
-    anon_log->add( batch_msgs ).
+    anon_log->zif_logger~add( batch_msgs ).
 
     get_messages( EXPORTING log_handle  = anon_log->handle
                   IMPORTING msg_details = bal_msgs ).
@@ -1099,8 +1108,8 @@ CLASS lcl_test IMPLEMENTATION.
     DATA msg_handle   TYPE balmsghndl.
     DATA act_details  TYPE bal_s_msg.
 
-    anon_log->add( obj_to_log = 'Here is some text'
-                   context    = addl_context ).
+    anon_log->zif_logger~add( obj_to_log = 'Here is some text'
+                              context    = addl_context ).
 
     msg_handle-log_handle = anon_log->handle.
     msg_handle-msgnumber  = '000001'.
@@ -1131,7 +1140,7 @@ CLASS lcl_test IMPLEMENTATION.
     APPEND loggable_message TO loggable->messages.
 
     " when
-    named_log->add( obj_to_log = loggable ).
+    named_log->zif_logger~add( obj_to_log = loggable ).
 
     " then
     cl_abap_unit_assert=>assert_equals( exp = 'Itestthelogger.'
@@ -1148,8 +1157,8 @@ CLASS lcl_test IMPLEMENTATION.
     APPEND `Here is some text` TO msg_table.
     APPEND `Here is some other text` TO msg_table.
 
-    anon_log->add( obj_to_log = msg_table
-                   context    = addl_context ).
+    anon_log->zif_logger~add( obj_to_log = msg_table
+                              context    = addl_context ).
 
     msg_handle-log_handle = anon_log->handle.
     msg_handle-msgnumber  = '000001'.
@@ -1180,9 +1189,9 @@ CLASS lcl_test IMPLEMENTATION.
     DATA msg_detail   TYPE bal_s_msg.
     DATA exp_callback TYPE bal_s_clbk.
 
-    anon_log->add( obj_to_log    = 'Message with Callback'
-                   callback_form = 'FORM'
-                   callback_prog = 'PROGRAM' ).
+    anon_log->zif_logger~add( obj_to_log    = 'Message with Callback'
+                              callback_form = 'FORM'
+                              callback_prog = 'PROGRAM' ).
 
     msg_handle-log_handle = anon_log->handle.
     msg_handle-msgnumber  = '000001'.
@@ -1205,8 +1214,8 @@ CLASS lcl_test IMPLEMENTATION.
     DATA msg_detail   TYPE bal_s_msg.
     DATA exp_callback TYPE bal_s_clbk.
 
-    anon_log->add( obj_to_log  = 'Message with Callback'
-                   callback_fm = 'FUNCTION' ).
+    anon_log->zif_logger~add( obj_to_log  = 'Message with Callback'
+                              callback_fm = 'FUNCTION' ).
 
     msg_handle-log_handle = anon_log->handle.
     msg_handle-msgnumber  = '000001'.
@@ -1416,15 +1425,15 @@ CLASS lcl_test IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD can_change_description.
-    DATA desc TYPE bal_s_log-extnumber.
+    DATA desc               TYPE bal_s_log-extnumber.
+    DATA most_recent_header TYPE balhdr.
 
     desc = cl_system_uuid=>create_uuid_c32_static( ).
 
-    named_log ?= zcl_logger_factory=>create_log(
-                     object    = 'ABAPUNIT'
-                     subobject = ''
-                     settings  = zcl_logger_factory=>create_settings( )->set_autosave( abap_false ) ).
-
+    named_log = zcl_logger_bal=>create_new_log(
+                    object    = 'ABAPUNIT'
+                    subobject = ''
+                    settings  = zcl_logger_factory=>create_settings( )->set_autosave( abap_false ) ).
     named_log->zif_logger~set_header( desc ).
 
     cl_abap_unit_assert=>assert_equals( exp = desc
@@ -1434,10 +1443,11 @@ CLASS lcl_test IMPLEMENTATION.
     named_log->zif_logger~save( ).
 
     CALL FUNCTION 'BAL_GLB_MEMORY_REFRESH'.                " Close Logs
-    CREATE OBJECT reopened_log
-      EXPORTING object    = 'ABAPUNIT'
-                subobject = ''
-                extnumber = desc.
+    most_recent_header = find_most_recent_header( object    = 'ABAPUNIT'
+                                                  subobject = ''
+                                                  extnumber = desc ).
+
+    reopened_log = zcl_logger_bal=>open_existing_log( log_header = most_recent_header ).
 
     cl_abap_unit_assert=>assert_bound( act = reopened_log
                                        msg = 'Did not find log with new desc' ).
@@ -1893,5 +1903,17 @@ CLASS lcl_test IMPLEMENTATION.
     anon_log->zif_logger~add( where_used_list ).
     cl_abap_unit_assert=>assert_equals( exp = 0
                                         act = anon_log->zif_logger~length( ) ).
+  ENDMETHOD.
+
+  METHOD find_most_recent_header.
+    DATA log_headers TYPE balhdr_t.
+
+    log_headers = zcl_logger_bal=>find_log_headers( object    = 'ABAPUNIT'
+                                                     subobject = ''
+                                                     extnumber = extnumber ).
+    IF lines( log_headers ) > 1.
+      DELETE log_headers TO ( lines( log_headers ) - 1 ).
+    ENDIF.
+    READ TABLE log_headers INDEX 1 INTO result.
   ENDMETHOD.
 ENDCLASS.
