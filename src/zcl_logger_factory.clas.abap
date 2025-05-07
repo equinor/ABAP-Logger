@@ -211,7 +211,7 @@ CLASS zcl_logger_factory IMPLEMENTATION.
 
   METHOD open_log_by_header.
     DATA log_headers TYPE balhdr_t.
-    DATA log_handles TYPE bal_t_msgh ##NEEDED.
+    DATA log_handles TYPE bal_t_logh ##NEEDED.
 
     INSERT header INTO TABLE log_headers.
 
