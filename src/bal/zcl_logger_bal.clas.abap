@@ -152,7 +152,9 @@ CLASS zcl_logger_bal IMPLEMENTATION.
         RAISE EXCEPTION TYPE zcx_logger
           EXPORTING info = |BAL_DB_LOAD exception: Log not found|.
       WHEN 3.
-        opened_log_handle = log_handle.
+        opened_log_handle = COND #( WHEN log_handle IS NOT INITIAL
+                                    THEN log_handle
+                                    ELSE log_header-log_handle ).
       WHEN OTHERS.
         RAISE EXCEPTION TYPE zcx_logger
           EXPORTING info = |BAL_DB_LOAD return code { sy-subrc }|.

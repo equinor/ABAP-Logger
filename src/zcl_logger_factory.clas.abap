@@ -155,8 +155,8 @@ CLASS zcl_logger_factory IMPLEMENTATION.
     DATA most_recent_header TYPE balhdr.
 
     found_headers = zcl_logger_bal=>find_log_headers( object    = object
-                                                       subobject = subobject
-                                                       extnumber = extnumber ).
+                                                      subobject = subobject
+                                                      extnumber = extnumber ).
 
     IF lines( found_headers ) = 0.
       IF create_if_does_not_exist = abap_true.
@@ -174,7 +174,7 @@ CLASS zcl_logger_factory IMPLEMENTATION.
     ENDIF.
     READ TABLE found_headers INDEX 1 INTO most_recent_header.
     result = zcl_logger_bal=>open_existing_log( log_header = most_recent_header
-                                                 settings   = settings ).
+                                                settings   = settings ).
   ENDMETHOD.
 
   METHOD open_log_by_db_number.
@@ -211,34 +211,33 @@ CLASS zcl_logger_factory IMPLEMENTATION.
 
   METHOD open_log_by_header.
     DATA log_headers TYPE balhdr_t.
-    data log_handles type bal_t_msgh.
+    DATA log_handles TYPE bal_t_msgh ##NEEDED.
 
     INSERT header INTO TABLE log_headers.
 
-    " If you call BAL_DB_LOAD for a log that is already loaded, it doesn't return its handle, so don't rely on returned data
+    " BAL_DB_LOAD doesn't return handle if log is already loaded - don't rely on returned data
     CALL FUNCTION 'BAL_DB_LOAD'
-      EXPORTING  i_t_log_header     = log_headers
+      EXPORTING  i_t_log_header                = log_headers
                  i_exception_if_already_loaded = 'X'
-      importing et_log_handle = log_handles
-      EXCEPTIONS no_logs_specified  = 1                "
-                 log_not_found      = 2                " Log not found
-                 log_already_loaded = 3                " Log is already loaded
-                 OTHERS             = 4.
-    case sy-subrc.
-     when 0.
-       "Open log
-     when 1.
-       RAISE EXCEPTION TYPE zcx_logger
-         exporting info = 'No logs specified for BAL_DB_LOAD'.
-     when 2.
-       RAISE EXCEPTION TYPE zcx_logger
-         exporting info = |Log with handle '{ header-log_handle }' not found by BAL_DB_LOAD|.
-     when 3.
-       "open log
-
-     when others.
-      RAISE EXCEPTION TYPE zcx_logger.
-    ENDcase.
+      IMPORTING  e_t_log_handle                = log_handles
+      EXCEPTIONS no_logs_specified             = 1
+                 log_not_found                 = 2
+                 log_already_loaded            = 3
+                 OTHERS                        = 4.
+    CASE sy-subrc.
+      WHEN 0.
+        " Open log
+      WHEN 1.
+        RAISE EXCEPTION TYPE zcx_logger
+          EXPORTING info = 'No logs specified for BAL_DB_LOAD'.
+      WHEN 2.
+        RAISE EXCEPTION TYPE zcx_logger
+          EXPORTING info = |Log with handle '{ header-log_handle }' not found by BAL_DB_LOAD|.
+      WHEN 3.
+        " open log
+      WHEN OTHERS.
+        RAISE EXCEPTION TYPE zcx_logger.
+    ENDCASE.
 
     DATA logger TYPE REF TO zcl_logger_bal.
     IF log_logger IS INITIAL.
