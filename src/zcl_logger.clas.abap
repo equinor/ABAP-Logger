@@ -718,6 +718,9 @@ CLASS zcl_logger IMPLEMENTATION.
   METHOD zif_logger~set_header.
   ENDMETHOD.
 
+  METHOD zif_logger_log_object~get_message_table.
+  ENDMETHOD.
+
   METHOD zif_logger_deprecated~a.
     result = zif_logger~abend( obj_to_log          = obj_to_log
                                context             = context
@@ -773,6 +776,6 @@ CLASS zcl_logger IMPLEMENTATION.
                                  detlevel            = detlevel ).
   ENDMETHOD.
 
-  METHOD zif_logger_log_object~get_message_table.
+  METHOD zif_logger_deprecated~fullscreen.
   ENDMETHOD.
 ENDCLASS.

@@ -12,12 +12,13 @@ CLASS zcl_logger_bal DEFINITION
       IMPORTING settings TYPE REF TO zif_logger_settings OPTIONAL.
 
     METHODS zif_logger~set_header                   REDEFINITION.
-    METHODS zif_logger_log_object~get_message_table REDEFINITION.
     METHODS zif_logger~export_to_table              REDEFINITION.
     METHODS zif_logger~free                         REDEFINITION.
     METHODS zif_logger~has_errors                   REDEFINITION.
     METHODS zif_logger~has_warnings                 REDEFINITION.
     METHODS zif_logger~length                       REDEFINITION.
+    METHODS zif_logger_log_object~get_message_table REDEFINITION.
+    METHODS zif_logger_deprecated~fullscreen        REDEFINITION.
 
   PROTECTED SECTION.
     DATA handle         TYPE balloghndl.
@@ -556,4 +557,7 @@ CLASS zcl_logger_bal IMPLEMENTATION.
     result = header.
   ENDMETHOD.
 
+  METHOD zif_logger_deprecated~fullscreen.
+    zif_logger_ui~display_fullscreen( ).
+  ENDMETHOD.
 ENDCLASS.

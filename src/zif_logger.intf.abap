@@ -2,11 +2,12 @@ INTERFACE zif_logger
   PUBLIC.
   INTERFACES zif_logger_deprecated.
 
-  ALIASES a FOR zif_logger_deprecated~a.
-  ALIASES e FOR zif_logger_deprecated~e.
-  ALIASES w FOR zif_logger_deprecated~w.
-  ALIASES i FOR zif_logger_deprecated~i.
-  ALIASES s FOR zif_logger_deprecated~s.
+  ALIASES a          FOR zif_logger_deprecated~a.
+  ALIASES e          FOR zif_logger_deprecated~e.
+  ALIASES w          FOR zif_logger_deprecated~w.
+  ALIASES i          FOR zif_logger_deprecated~i.
+  ALIASES s          FOR zif_logger_deprecated~s.
+  ALIASES fullscreen FOR zif_logger_deprecated~fullscreen.
 
   METHODS add
     IMPORTING obj_to_log          TYPE any       DEFAULT sy

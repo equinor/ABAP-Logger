@@ -1,6 +1,6 @@
 INTERFACE zif_logger_deprecated
   PUBLIC.
-  "! <p class="shorttext synchronized" lang="en">DEPRECATED - renamed to abend( )</p>
+  "! <p class="shorttext synchronized">DEPRECATED - renamed to abend( )</p>
   "!
   METHODS a
     IMPORTING obj_to_log          TYPE any       DEFAULT sy
@@ -14,7 +14,7 @@ INTERFACE zif_logger_deprecated
         PREFERRED PARAMETER obj_to_log
     RETURNING VALUE(result)       TYPE REF TO zif_logger_deprecated.
 
-  "! <p class="shorttext synchronized" lang="en">DEPRECATED - renamed to error( )</p>
+  "! <p class="shorttext synchronized">DEPRECATED - renamed to error( )</p>
   "!
   METHODS e
     IMPORTING obj_to_log          TYPE any       DEFAULT sy
@@ -28,7 +28,7 @@ INTERFACE zif_logger_deprecated
         PREFERRED PARAMETER obj_to_log
     RETURNING VALUE(result)       TYPE REF TO zif_logger_deprecated.
 
-  "! <p class="shorttext synchronized" lang="en">DEPRECATED - renamed to warning( )</p>
+  "! <p class="shorttext synchronized">DEPRECATED - renamed to warning( )</p>
   "!
   METHODS w
     IMPORTING obj_to_log          TYPE any       DEFAULT sy
@@ -42,7 +42,7 @@ INTERFACE zif_logger_deprecated
         PREFERRED PARAMETER obj_to_log
     RETURNING VALUE(result)       TYPE REF TO zif_logger_deprecated.
 
-  "! <p class="shorttext synchronized" lang="en">DEPRECATED - renamed to info( )</p>
+  "! <p class="shorttext synchronized">DEPRECATED - renamed to info( )</p>
   "!
   METHODS i
     IMPORTING obj_to_log          TYPE any       DEFAULT sy
@@ -56,7 +56,7 @@ INTERFACE zif_logger_deprecated
         PREFERRED PARAMETER obj_to_log
     RETURNING VALUE(result)       TYPE REF TO zif_logger_deprecated.
 
-  "! <p class="shorttext synchronized" lang="en">DEPRECATED - renamed to success( )</p>
+  "! <p class="shorttext synchronized">DEPRECATED - renamed to success( )</p>
   "!
   METHODS s
     IMPORTING obj_to_log          TYPE any       DEFAULT sy
@@ -69,4 +69,6 @@ INTERFACE zif_logger_deprecated
               detlevel            TYPE ballevel  OPTIONAL
         PREFERRED PARAMETER obj_to_log
     RETURNING VALUE(result)       TYPE REF TO zif_logger_deprecated.
+
+  METHODS fullscreen.
 ENDINTERFACE.
