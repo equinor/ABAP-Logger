@@ -262,6 +262,16 @@
      <TDLINE>to see the behavior in action.</TDLINE>
     </TLINE>
    </LINES>
+   <DESCRIPTIONS_CLASS>
+    <SEOCLASSTX>
+     <LANGU>O</LANGU>
+     <DESCRIPT>ABAP Logger</DESCRIPT>
+    </SEOCLASSTX>
+    <SEOCLASSTX>
+     <LANGU>P</LANGU>
+     <DESCRIPT>ABAP Logger</DESCRIPT>
+    </SEOCLASSTX>
+   </DESCRIPTIONS_CLASS>
   </asx:values>
  </asx:abap>
 </abapGit>

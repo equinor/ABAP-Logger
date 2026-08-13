@@ -10,10 +10,30 @@
     <STATE>1</STATE>
     <UNICODE>X</UNICODE>
    </VSEOINTERF>
+   <DESCRIPTIONS_INTERFACE>
+    <SEOCLASSTX>
+     <LANGU>O</LANGU>
+     <DESCRIPT>ABAP Logger: Interface - Deprecated methods will be removed</DESCRIPT>
+    </SEOCLASSTX>
+    <SEOCLASSTX>
+     <LANGU>P</LANGU>
+     <DESCRIPT>ABAP Logger: Interface - Deprecated methods will be removed</DESCRIPT>
+    </SEOCLASSTX>
+   </DESCRIPTIONS_INTERFACE>
    <DESCRIPTIONS>
     <SEOCOMPOTX>
      <CMPNAME>A</CMPNAME>
      <LANGU>E</LANGU>
+     <DESCRIPT>DEPRECATED - renamed to abend( )</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>A</CMPNAME>
+     <LANGU>O</LANGU>
+     <DESCRIPT>DEPRECATED - renamed to abend( )</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>A</CMPNAME>
+     <LANGU>P</LANGU>
      <DESCRIPT>DEPRECATED - renamed to abend( )</DESCRIPT>
     </SEOCOMPOTX>
     <SEOCOMPOTX>
@@ -22,8 +42,28 @@
      <DESCRIPT>DEPRECATED - renamed to error( )</DESCRIPT>
     </SEOCOMPOTX>
     <SEOCOMPOTX>
+     <CMPNAME>E</CMPNAME>
+     <LANGU>O</LANGU>
+     <DESCRIPT>DEPRECATED - renamed to error( )</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>E</CMPNAME>
+     <LANGU>P</LANGU>
+     <DESCRIPT>DEPRECATED - renamed to error( )</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
      <CMPNAME>I</CMPNAME>
      <LANGU>E</LANGU>
+     <DESCRIPT>DEPRECATED - renamed to info( )</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>I</CMPNAME>
+     <LANGU>O</LANGU>
+     <DESCRIPT>DEPRECATED - renamed to info( )</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>I</CMPNAME>
+     <LANGU>P</LANGU>
      <DESCRIPT>DEPRECATED - renamed to info( )</DESCRIPT>
     </SEOCOMPOTX>
     <SEOCOMPOTX>
@@ -32,8 +72,28 @@
      <DESCRIPT>DEPRECATED - renamed to success( )</DESCRIPT>
     </SEOCOMPOTX>
     <SEOCOMPOTX>
+     <CMPNAME>S</CMPNAME>
+     <LANGU>O</LANGU>
+     <DESCRIPT>DEPRECATED - renamed to success( )</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>S</CMPNAME>
+     <LANGU>P</LANGU>
+     <DESCRIPT>DEPRECATED - renamed to success( )</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
      <CMPNAME>W</CMPNAME>
      <LANGU>E</LANGU>
+     <DESCRIPT>DEPRECATED - renamed to warning( )</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>W</CMPNAME>
+     <LANGU>O</LANGU>
+     <DESCRIPT>DEPRECATED - renamed to warning( )</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>W</CMPNAME>
+     <LANGU>P</LANGU>
      <DESCRIPT>DEPRECATED - renamed to warning( )</DESCRIPT>
     </SEOCOMPOTX>
    </DESCRIPTIONS>

@@ -38,6 +38,14 @@ CLASS zcl_logger_factory DEFINITION
                 settings                 TYPE REF TO zif_logger_settings OPTIONAL
       RETURNING VALUE(result)            TYPE REF TO zif_logger.
 
+    "! Creates a logger for an XPRA report
+    "!
+    "! @parameter settings | Logger settings
+    "! @parameter result   | Logger
+    CLASS-METHODS create_xpra_logger
+      IMPORTING settings      TYPE REF TO zif_logger_settings OPTIONAL
+      RETURNING VALUE(result) TYPE REF TO zif_logger.
+
     "! Creates a settings object which can be modified. It can be pass on
     "! the creation of the logger to change its behavior.
     "!
@@ -68,6 +76,7 @@ CLASS zcl_logger_factory DEFINITION
                 settings      TYPE REF TO zif_logger_settings OPTIONAL
       RETURNING VALUE(result) TYPE REF TO zif_logger.
 
+  PROTECTED SECTION.
   PRIVATE SECTION.
     "! <p class="shorttext synchronized">Name of background job which executes XPRA reports</p>
     CONSTANTS xpra_job_name TYPE btcjob VALUE 'RDDEXECL'.
@@ -77,22 +86,14 @@ CLASS zcl_logger_factory DEFINITION
     CLASS-DATA log_collection      TYPE REF TO zif_logger_collection.
     CLASS-DATA log_display_profile TYPE REF TO zif_logger_display_profile.
 
-
     CLASS-METHODS get_settings
       IMPORTING settings      TYPE REF TO zif_logger_settings
       RETURNING VALUE(result) TYPE REF TO zif_logger_settings.
-
-    CLASS-METHODS is_executing_as_xpra
-      RETURNING VALUE(result) TYPE abap_bool.
 
     CLASS-METHODS open_log_by_header
       IMPORTING !header       TYPE balhdr
                 settings      TYPE REF TO zif_logger_settings OPTIONAL
       RETURNING VALUE(result) TYPE REF TO zif_logger.
-
-    CLASS-METHODS create_xpra_logger
-      IMPORTING logger_settings TYPE REF TO zif_logger_settings
-      RETURNING VALUE(result)   TYPE REF TO zcl_logger_xpra.
 
     CLASS-METHODS create_sbal_logger
       IMPORTING logger_settings TYPE REF TO zif_logger_settings
@@ -104,7 +105,10 @@ CLASS zcl_logger_factory DEFINITION
 ENDCLASS.
 
 
-CLASS zcl_logger_factory IMPLEMENTATION.
+
+CLASS ZCL_LOGGER_FACTORY IMPLEMENTATION.
+
+
   METHOD create_collection.
     IF log_collection IS INITIAL.
       CREATE OBJECT result TYPE zcl_logger_collection.
@@ -112,6 +116,7 @@ CLASS zcl_logger_factory IMPLEMENTATION.
       result = log_collection.
     ENDIF.
   ENDMETHOD.
+
 
   METHOD create_display_profile.
     IF log_display_profile IS INITIAL.
@@ -125,22 +130,21 @@ CLASS zcl_logger_factory IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
+
   METHOD create_log.
     ASSERT desc IS NOT SUPPLIED OR extnumber IS NOT SUPPLIED.
 
     IF log_logger IS NOT INITIAL.
       result = log_logger.
-    ELSEIF is_executing_as_xpra( ) = abap_true.
-      result = create_xpra_logger( get_settings( settings ) ).
     ELSE.
       result = create_sbal_logger( logger_settings = get_settings( settings )
                                    object          = object
                                    subobject       = subobject
-                                   extnumber       = extnumber
-                                   context         = context
-                                    ).
+                                   extnumber       = extnumber && desc
+                                   context         = context ).
     ENDIF.
   ENDMETHOD.
+
 
   METHOD create_settings.
     IF log_settings IS INITIAL.
@@ -149,6 +153,16 @@ CLASS zcl_logger_factory IMPLEMENTATION.
       result = log_settings.
     ENDIF.
   ENDMETHOD.
+
+
+  METHOD create_xpra_logger.
+    DATA logger TYPE REF TO zcl_logger_xpra.
+
+    CREATE OBJECT logger
+      EXPORTING settings = settings.
+    result = logger.
+  ENDMETHOD.
+
 
   METHOD open_log.
     DATA found_headers      TYPE balhdr_t.
@@ -177,10 +191,12 @@ CLASS zcl_logger_factory IMPLEMENTATION.
                                                 settings   = settings ).
   ENDMETHOD.
 
+
   METHOD open_log_by_db_number.
     result = zcl_logger_bal=>open_existing_log( log_number = db_number
-                                                 settings   = settings ).
+                                                settings   = settings ).
   ENDMETHOD.
+
 
   METHOD get_settings.
     IF settings IS BOUND AND settings IS NOT INITIAL.
@@ -190,24 +206,6 @@ CLASS zcl_logger_factory IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
-  METHOD is_executing_as_xpra.
-    " XPRA executes in client 000 in a specific job
-    DATA current_job_name TYPE btcjob.
-
-    result = abap_false.
-    IF sy-mandt <> '000'.
-      RETURN.
-    ENDIF.
-
-    CALL FUNCTION 'GET_JOB_RUNTIME_INFO'
-      IMPORTING  jobname         = current_job_name
-      EXCEPTIONS no_runtime_info = 1.
-    IF sy-subrc <> 0.
-      RETURN.
-    ELSEIF current_job_name = xpra_job_name.
-      result = abap_true.
-    ENDIF.
-  ENDMETHOD.
 
   METHOD open_log_by_header.
     DATA log_headers TYPE balhdr_t.
@@ -257,22 +255,15 @@ CLASS zcl_logger_factory IMPLEMENTATION.
       IMPORTING e_s_log      = logger->header.
   ENDMETHOD.
 
-  METHOD create_xpra_logger.
-    DATA logger TYPE REF TO zcl_logger_xpra.
-
-    CREATE OBJECT logger
-      EXPORTING settings = logger_settings.
-    result = logger.
-  ENDMETHOD.
 
   METHOD create_sbal_logger.
     DATA logger TYPE REF TO zcl_logger_bal.
 
     logger = zcl_logger_bal=>create_new_log( object    = object
-                                              subobject = subobject
-                                              extnumber = extnumber
-                                              context   = context
-                                              settings  = logger_settings ).
+                                             subobject = subobject
+                                             extnumber = extnumber
+                                             context   = context
+                                             settings  = logger_settings ).
     result = logger.
   ENDMETHOD.
 ENDCLASS.

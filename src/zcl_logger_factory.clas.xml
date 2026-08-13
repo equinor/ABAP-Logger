@@ -11,10 +11,30 @@
     <FIXPT>X</FIXPT>
     <UNICODE>X</UNICODE>
    </VSEOCLASS>
+   <DESCRIPTIONS_CLASS>
+    <SEOCLASSTX>
+     <LANGU>O</LANGU>
+     <DESCRIPT>ABAP Logger: Factory</DESCRIPT>
+    </SEOCLASSTX>
+    <SEOCLASSTX>
+     <LANGU>P</LANGU>
+     <DESCRIPT>ABAP Logger: Factory</DESCRIPT>
+    </SEOCLASSTX>
+   </DESCRIPTIONS_CLASS>
    <DESCRIPTIONS>
     <SEOCOMPOTX>
      <CMPNAME>XPRA_JOB_NAME</CMPNAME>
      <LANGU>E</LANGU>
+     <DESCRIPT>Name of background job which executes XPRA reports</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>XPRA_JOB_NAME</CMPNAME>
+     <LANGU>O</LANGU>
+     <DESCRIPT>Name of background job which executes XPRA reports</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>XPRA_JOB_NAME</CMPNAME>
+     <LANGU>P</LANGU>
      <DESCRIPT>Name of background job which executes XPRA reports</DESCRIPT>
     </SEOCOMPOTX>
    </DESCRIPTIONS>

@@ -19,7 +19,6 @@ INTERFACE zif_logger
               !type               TYPE symsgty   OPTIONAL
               importance          TYPE balprobcl OPTIONAL
               detlevel            TYPE ballevel  OPTIONAL
-              start_new_section   TYPE xfeld     OPTIONAL
         PREFERRED PARAMETER obj_to_log
     RETURNING VALUE(result)       TYPE REF TO zif_logger.
 
@@ -56,7 +55,6 @@ INTERFACE zif_logger
               callback_parameters TYPE bal_t_par OPTIONAL
               importance          TYPE balprobcl OPTIONAL
               detlevel            TYPE ballevel  OPTIONAL
-              start_new_section   TYPE xfeld     OPTIONAL
         PREFERRED PARAMETER obj_to_log
     RETURNING VALUE(result)       TYPE REF TO zif_logger.
 
@@ -107,6 +105,12 @@ INTERFACE zif_logger
               detlevel            TYPE ballevel  OPTIONAL
         PREFERRED PARAMETER obj_to_log
     RETURNING VALUE(result)       TYPE REF TO zif_logger.
+
+  "! <p class="shorttext synchronized">The next message will start a new section</p>
+  "!
+  "! @parameter result | <p class="shorttext synchronized">ABAP Logger</p>
+  METHODS new_section
+    RETURNING VALUE(result) TYPE REF TO zif_logger.
 
   METHODS has_errors
     RETURNING VALUE(result) TYPE abap_bool.

@@ -60,9 +60,19 @@ CLASS zcl_logger_collection IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD get_log_handles.
-    DATA logger TYPE REF TO zif_logger.
+    DATA logger     TYPE REF TO zif_logger.
+    DATA bal_logger TYPE REF TO zif_logger_bal.
+    DATA log_handle TYPE balloghndl.
+
     LOOP AT loggers INTO logger.
-      INSERT logger->handle INTO TABLE r_return.
+      CATCH SYSTEM-EXCEPTIONS move_cast_error = 4.
+        bal_logger ?= logger.
+        log_handle = bal_logger->get_handle( ).
+      ENDCATCH.
+      IF sy-subrc <> 0.
+        CONTINUE.
+      ENDIF.
+      INSERT log_handle INTO TABLE r_return.
     ENDLOOP.
   ENDMETHOD.
 

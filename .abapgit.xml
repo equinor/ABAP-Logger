@@ -12,9 +12,6 @@
     <item>/package.json</item>
     <item>/.travis.yml</item>
     <item>/abaplint.json</item>
-    <item>/.apack-manifest.xml</item>
-    <item>/src/zcl_logger_manifest.clas.abap</item>
-    <item>/src/zcl_logger_manifest.clas.xml</item>
    </IGNORE>
   </DATA>
  </asx:values>
