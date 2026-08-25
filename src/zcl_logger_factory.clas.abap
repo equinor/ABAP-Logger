@@ -12,6 +12,7 @@ CLASS zcl_logger_factory DEFINITION
         object       TYPE csequence OPTIONAL
         subobject    TYPE csequence OPTIONAL
         desc         TYPE csequence OPTIONAL
+        extnumber    TYPE csequence OPTIONAL
         context      TYPE any OPTIONAL
         settings     TYPE REF TO zif_logger_settings OPTIONAL
       RETURNING
@@ -23,6 +24,7 @@ CLASS zcl_logger_factory DEFINITION
         object                   TYPE csequence
         subobject                TYPE csequence
         desc                     TYPE csequence OPTIONAL
+        extnumber                TYPE csequence OPTIONAL
         create_if_does_not_exist TYPE abap_bool DEFAULT abap_false
         settings                 TYPE REF TO zif_logger_settings OPTIONAL
       RETURNING
@@ -127,7 +129,11 @@ CLASS zcl_logger_factory IMPLEMENTATION.
 
     lo_log->header-object    = object.
     lo_log->header-subobject = subobject.
-    lo_log->header-extnumber = desc.
+    IF desc IS INITIAL.
+      lo_log->header-extnumber = extnumber.
+    ELSE.
+      lo_log->header-extnumber = desc.
+    ENDIF.
 
     IF settings IS BOUND.
       lo_log->settings = settings.
@@ -182,14 +188,25 @@ CLASS zcl_logger_factory IMPLEMENTATION.
     DATA: found_headers      TYPE balhdr_t,
           most_recent_header TYPE balhdr.
 
-    found_headers = find_log_headers( object = object subobject = subobject desc = desc ).
+    IF desc IS INITIAL.
+      found_headers = find_log_headers( object = object subobject = subobject desc = extnumber ).
+    ELSE.
+      found_headers = find_log_headers( object = object subobject = subobject desc = desc ).
+    ENDIF.
 
     IF lines( found_headers ) = 0 .
       IF create_if_does_not_exist = abap_true.
-        r_log = create_log( object    = object
-                            subobject = subobject
-                            desc      = desc
-                            settings  = settings ).
+        IF desc IS INITIAL.
+          r_log = create_log( object    = object
+                              subobject = subobject
+                              desc      = extnumber
+                              settings  = settings ).
+        ELSE.
+          r_log = create_log( object    = object
+                              subobject = subobject
+                              desc      = desc
+                              settings  = settings ).
+        ENDIF.
       ENDIF.
       RETURN.
     ENDIF.
